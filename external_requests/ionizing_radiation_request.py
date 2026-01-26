@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 import requests
-from request_api_abstract import RequestApi
+from .request_api_abstract import RequestApi
 
 class IonizingRadiationRequest(RequestApi):
 
@@ -33,6 +33,6 @@ class IonizingRadiationRequest(RequestApi):
             raise requests.HTTPError(f"Something went wrong during a request to safecastAPI\nStatus: {self.__response.status_code}")
 
 if __name__ == "__main__":
-    radiation = IonizingRadiationRequest(52.5200, 13.4050, 20)
+    radiation = IonizingRadiationRequest(48.8575, 2.3514, 20)
     from pprint import pprint
     pprint(radiation.get_response())

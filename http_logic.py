@@ -77,13 +77,7 @@ class HTTP:
                     self.__ionizing_radiation_data: str = "N/A" #The JSON don't have any data from inside a circle with radius of 100km with that point on the center.
                 else:
                     #If the json is filed with data, we have this case over here. At such scenario, we get the average value of the cpm ionizing radiation measurement.
-                    self.__list_of_ir = [
-                            {
-                             'radiation' : self.__current_ir_json[_]['value'],
-                             'lat' : self.__current_ir_json[_]['latitude'],
-                             'lon' : self.__current_ir_json[_]['longitude']
-                            } for _ in range(len(self.__current_ir_json)) if self.__current_ir_json[_]['unit'] == "cpm"
-                            ]
+                    self.__list_of_ir = DataHandler.clean_radiation_JSON(self.__current_ir_json)
                     if len(self.__list_of_ir) == 0:
                         self.__ionizing_radiation_data: str = "N/A" #The json doesn't deal with cpm (our unit).
                     else:

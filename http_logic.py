@@ -71,16 +71,23 @@ class HTTP:
                         abort(500, message = str(err))
                     else:
                         if len(self.__current_ir_json) > 0:
+                            self.__real_radius = 2 * mut * self.__std_radius
                             break
                 if len(self.__current_ir_json) == 0:
                     self.__ionizing_radiation_data: str = "N/A" #The JSON don't have any data from inside a circle with radius of 100km with that point on the center.
                 else:
                     #If the json is filed with data, we have this case over here. At such scenario, we get the average value of the cpm ionizing radiation measurement.
-                    self.__list_of_ir = [self.__current_ir_json[_]['value'] for _ in range(len(self.__current_ir_json)) if self.__current_ir_json[_]['unit'] == "cpm"]
+                    self.__list_of_ir = [
+                            {
+                             'radiation' : self.__current_ir_json[_]['value'],
+                             'lat' : self.__current_ir_json[_]['latitude'],
+                             'lon' : self.__current_ir_json[_]['longitude']
+                            } for _ in range(len(self.__current_ir_json)) if self.__current_ir_json[_]['unit'] == "cpm"
+                            ]
                     if len(self.__list_of_ir) == 0:
                         self.__ionizing_radiation_data: str = "N/A" #The json doesn't deal with cpm (our unit).
                     else:
-                        self.__ionizing_radiation_data: float = DataHandler.get_avg(self.__list_of_ir) #Average of the ionizing radiations with cpm as unit.
+                        self.__ionizing_radiation_data: float = DataHandler.get_fair_radiation(self.__list_of_ir, radius = self.__real_radius) #Average of the ionizing radiations with cpm as unit.
             
             self.__BASE_JSON = {
                 "location" : self.__location,

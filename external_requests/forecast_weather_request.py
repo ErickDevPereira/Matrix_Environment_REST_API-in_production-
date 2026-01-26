@@ -1,6 +1,6 @@
 import requests
 from typing import Dict, Any
-from request_api_abstract import RequestApi
+from .request_api_abstract import RequestApi
 
 class ForecastWeatherRequest(RequestApi):
     

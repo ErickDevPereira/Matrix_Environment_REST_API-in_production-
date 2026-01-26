@@ -1,5 +1,5 @@
 import requests
-from request_api_abstract import RequestApi
+from .request_api_abstract import RequestApi
 from typing import Any, Dict
 
 class CurrentWeatherRequest(RequestApi):
@@ -17,5 +17,5 @@ class CurrentWeatherRequest(RequestApi):
             raise requests.HTTPError(f"Something went wrong with the request to the WeatherAPI\nStatus: {self.__response.status_code}")
 
 if __name__ == '__main__':
-    weather = CurrentWeatherRequest(48.8567, 2.3508)
+    weather = CurrentWeatherRequest(52.5200, 13.4050)
     print(weather.get_response())

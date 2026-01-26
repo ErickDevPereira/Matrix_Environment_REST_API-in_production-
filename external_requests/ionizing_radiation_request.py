@@ -1,12 +1,11 @@
 from typing import Dict, Any, List
 import requests
-from request_api_abstract import RequestApi
-
+from .request_api_abstract import RequestApi
 
 class IonizingRadiationRequest(RequestApi):
 
     def __init__(self, latitude: float | int, longitude: float | int, radius: float | int):
-        super().__init__(latitude, longitude)
+        super().__init__(latitude = latitude, longitude = longitude)
         #Raises error if raidus is not numeric.
         if not isinstance(radius, (int, float)):
             raise TypeError('The arguments can either be float or int, nothing else') 
@@ -34,5 +33,5 @@ class IonizingRadiationRequest(RequestApi):
             raise requests.HTTPError(f"Something went wrong during a request to safecastAPI\nStatus: {self.__response.status_code}")
 
 if __name__ == "__main__":
-    radiation = IonizingRadiationRequest(34.5006, 135.4994, 100)
+    radiation = IonizingRadiationRequest(52.5200, 13.4050, 20)
     print(radiation.get_response())

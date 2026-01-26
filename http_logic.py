@@ -1,7 +1,10 @@
 from flask import request
 from flask_restful import reqparse, Resource, abort, Api
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, List
 from abc import ABC, abstractmethod
+from external_requests import CurrentWeatherRequest, IonizingRadiationRequest
+from data_handling import DataHandler
+import requests
 
 class HTTP:
 
@@ -34,19 +37,66 @@ class HTTP:
     class EnvironmentDataNow(ForceGET, Util, Resource):
 
         def get(self) -> Tuple[Dict[str, Any], int]:
-
+            self.__std_radius: int = 10 #The standard radius to search for ionizing radiation measurement is 10km
             self.latitude: float = request.args.get("latitude", type = float)
             self.longitude: float = request.args.get("longitude", type = float)
             self.detail: str = request.args.get("detail")
             
             self.auth() #Authenticating data given by the user and creating the self.detail_bool
             
-            if self.detail_bool:
+            self.__weather: CurrentWeatherRequest = CurrentWeatherRequest(latitude=self.latitude, longitude = self.longitude)
+            try:
+                self.__current_weather_json: Dict[str, Any] | None = self.__weather.get_response()
+            except requests.HTTPError as err:
+                abort(500, message = str(err))
+            else: #Runs if everything went fine with the request to WeatherAPI
+                #Everything went fine with the request to weatherAPI. Now, we will catch the requested data.
+                try:
+                    self.__location: str = self.__current_weather_json['location']['name'] + ',' + self.__current_weather_json['location']['country']
+                    self.__temp_c: float = self.__current_weather_json['current']['temp_c']
+                    self.__wind_kph: float = self.__current_weather_json['current']['wind_kph']
+                    self.__pressure_mb: float = self.__current_weather_json['current']['pressure_mb']
+                    self.__humidity: float = self.__current_weather_json['current']['humidity']
+                    self.__uv: float = self.__current_weather_json['current']['uv']
+                except Exception as err:
+                    abort(500, message = f'Something went wrong on the server.\nStatus: {err}')
+                #Now, we will lead with the ionizing radiation request
+                for mut in range(1, 6):
+                    try:
+                        self.__ionizing_radiation: IonizingRadiationRequest = IonizingRadiationRequest(latitude = self.latitude,
+                                                                                                    longitude = self.longitude,
+                                                                                                    radius = 2 * mut * self.__std_radius)
+                        self.__current_ir_json: List[Dict[str, Any]] | None = self.__ionizing_radiation.get_response()
+                    except requests.HTTPError as err:
+                        abort(500, message = str(err))
+                    else:
+                        if len(self.__current_ir_json) > 0:
+                            break
+                if len(self.__current_ir_json) == 0:
+                    self.__ionizing_radiation_data: str = "N/A" #The JSON don't have any data from inside a circle with radius of 100km with that point on the center.
+                else:
+                    #If the json is filed with data, we have this case over here. At such scenario, we get the average value of the cpm ionizing radiation measurement.
+                    self.__list_of_ir = [self.__current_ir_json[_]['value'] for _ in range(len(self.__current_ir_json)) if self.__current_ir_json[_]['unit'] == "cpm"]
+                    if len(self.__list_of_ir) == 0:
+                        self.__ionizing_radiation_data: str = "N/A" #The json doesn't deal with cpm (our unit).
+                    else:
+                        self.__ionizing_radiation_data: float = DataHandler.get_avg(self.__list_of_ir) #Average of the ionizing radiations with cpm as unit.
+            
+            self.__BASE_JSON = {
+                "location" : self.__location,
+                "temperature(C)" : self.__temp_c,
+                "wind_speed(km/h)" : self.__wind_kph,
+                "pressure(mb)" : self.__pressure_mb,
+                "humidity(%)" : self.__humidity,
+                "uv" : self.__uv,
+                "ionizing_radiation(cpm)" : self.__ionizing_radiation_data
+            } #This is the most basic json that the server will return to the user.
+
+            if self.detail_bool: # The user requested detailed data about the environment right now.
                 #Here will be the detailed data
                 return {"message": "You've chosen the detailed option"}, 200
-            else:
-                return {"message": "You've not chosen the detailed option"}, 200
-                #Here will be the overall data without much detail.
+            else: #It will run if the user don't want details, so the basic json will be returned to the client side.
+                return self.__BASE_JSON, 200
     
     class ForecastEnvironmentDataNow(ForceGET, Util, Resource):
 

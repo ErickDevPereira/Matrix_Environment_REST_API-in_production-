@@ -128,5 +128,29 @@ class DataHandler:
             case _:
                 return "N/A"
 
+    @staticmethod
+    def transform_c_in_f(temp: float | int) -> float:
+        #Formula that converts °C to F
+        F: float = temp * (9/5) + 32
+        return F
+    
+    @staticmethod
+    def transform_c_in_k(temp: float | int) -> float:
+        #Formula that converts °C to kelvin
+        K: float = temp + 273.15
+        return K
+
+    @staticmethod
+    def get_wind_chill(temp: float | int, wind_speed: float | int) -> Dict[str, None | float | bool]:
+
+        #This model will predict the feels like temperature if the temperature is <= 10°C and the wind speed is >= 4.8 km/h, otherwise, the prediction won't be good.
+        if temp <= 10.0 and wind_speed >= 4.8:
+        
+            piece: float = wind_speed ** (16/100)
+            WC: float = 13.12 + 0.6215 * temp - 11.37 * piece + 0.3965 * temp * piece #Returns the temperature in °C
+            return {"temperature" : WC, "valid_case" : True} #JSON with data for the valid case
+        
+        return {"temperature" : None, "valid_case" : False} #JSON with None for the invalid case.
+
 if __name__ == '__main__':
-    print(DataHandler.get_simple_direction('WSW'))
+    print(DataHandler.get_heat_index(30, 78))

@@ -52,7 +52,7 @@ class HTTP:
             else: #Runs if everything went fine with the request to WeatherAPI
                 #Everything went fine with the request to weatherAPI. Now, we will catch the requested data.
                 try:
-                    self.__location: str = self.__current_weather_json['location']['name'] + ',' + self.__current_weather_json['location']['country']
+                    self.__location: str = self.__current_weather_json['location']['name'] + ', ' + self.__current_weather_json['location']['country']
                     self.__temp_c: float = self.__current_weather_json['current']['temp_c']
                     self.__wind_kph: float = self.__current_weather_json['current']['wind_kph']
                     self.__pressure_mb: float = self.__current_weather_json['current']['pressure_mb']
@@ -89,21 +89,28 @@ class HTTP:
             
             self.__BASE_JSON = {
                 "location" : self.__location,
-                "temperature(C)" : self.__temp_c,
+                "temperature(°C)" : self.__temp_c,
                 "wind_speed(km/h)" : self.__wind_kph,
                 "wind_dir(deg)" : self.__wind_dir,
                 "pressure(mb)" : self.__pressure_mb,
                 "humidity(%)" : self.__humidity,
                 "uv" : self.__uv,
-                "precipitation(mm)" : self.__precipitation,
+                "precipitation(mmHg)" : self.__precipitation,
                 "is_day" : self.__is_day,
                 "ionizing_radiation(cpm)" : self.__ionizing_radiation_data
             } #This is the most basic json that the server will return to the user.
 
             if self.detail_bool: # The user requested detailed data about the environment right now.
-                #Here will be the detailed data
-                return {"message": "You've chosen the detailed option"}, 200
+                
+                self.__BASE_JSON.update(
+                                {"temperature(°C, °F, k)" : [self.__temp_c, DataHandler.transform_c_in_f(self.__temp_c), DataHandler.transform_c_in_k(self.__temp_c)],
+                                "feels_like(Wind_Chill) °C" : DataHandler.get_wind_chill(self.__temp_c, self.__wind_kph)
+                                }
+                                )
+                return self.__BASE_JSON, 200
+
             else: #It will run if the user don't want details, so the basic json will be returned to the client side.
+                
                 return self.__BASE_JSON, 200
     
     class ForecastEnvironmentDataNow(ForceGET, Util, Resource):

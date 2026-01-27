@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from external_requests import CurrentWeatherRequest, IonizingRadiationRequest
 from data_handling import DataHandler
 import requests
+import math
 
 class HTTP:
 
@@ -85,6 +86,7 @@ class HTTP:
                     if len(self.__list_of_ir) == 0:
                         self.__ionizing_radiation_data: str = "N/A" #The json doesn't deal with cpm (our unit).
                     else:
+                        self.__coeficient_var: float = DataHandler.get_coeficient_of_var(self.__list_of_ir)
                         self.__ionizing_radiation_data: float = DataHandler.get_fair_radiation(self.__list_of_ir, radius = self.__real_radius) #Average of the ionizing radiations with cpm as unit.
             
             self.__BASE_JSON = {
@@ -102,9 +104,18 @@ class HTTP:
 
             if self.detail_bool: # The user requested detailed data about the environment right now.
                 
+                del self.__BASE_JSON['ionizing_radiation(cpm)']
                 self.__BASE_JSON.update(
-                                {"temperature(°C, °F, k)" : [self.__temp_c, DataHandler.transform_c_in_f(self.__temp_c), DataHandler.transform_c_in_k(self.__temp_c)],
-                                "feels_like(Wind_Chill) °C" : DataHandler.get_wind_chill(self.__temp_c, self.__wind_kph)
+                                {
+                                "temperature" : {"°C" : self.__temp_c, "°F" : DataHandler.transform_c_in_f(self.__temp_c),"k" : DataHandler.transform_c_in_k(self.__temp_c)},
+                                "feels_like (Wind_Chill) °C" : DataHandler.get_wind_chill(self.__temp_c, self.__wind_kph),
+                                "ionizing_radiation" :{
+                                    "value (cpm)" : self.__ionizing_radiation_data,
+                                    "coeficient_of_variability" : {
+                                        "value (%)": math.floor(100 * self.__coeficient_var),
+                                        "heterogeneity_status" : DataHandler.analyze_heterogeneity(self.__coeficient_var)
+                                        }
+                                    } if self.__ionizing_radiation_data != "N/A" else "N/A"
                                 }
                                 )
                 return self.__BASE_JSON, 200

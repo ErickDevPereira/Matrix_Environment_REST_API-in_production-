@@ -14,7 +14,7 @@ class CurrentWeatherRequest(RequestApi):
         if self.__response.status_code == 200:
             return self.__response.json()
         else:
-            raise requests.HTTPError(f"Something went wrong with the request to the WeatherAPI\nStatus: {self.__response.status_code}")
+            raise requests.HTTPError(f"Something went wrong with the request to the WeatherAPI. Status: {self.__response.status_code}")
 
 if __name__ == '__main__':
     weather = CurrentWeatherRequest(2.5200, 11.4050)

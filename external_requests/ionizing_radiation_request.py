@@ -30,7 +30,7 @@ class IonizingRadiationRequest(RequestApi):
             return self.__response.json()
         else:
             #Note: HTTPError occurs when the request has a bad status code (4xx for client side issues, 5xx for server side issues)
-            raise requests.HTTPError(f"Something went wrong during a request to safecastAPI\nStatus: {self.__response.status_code}")
+            raise requests.HTTPError(f"Something went wrong during a request to safecastAPI. Status: {self.__response.status_code}")
 
 if __name__ == "__main__":
     radiation = IonizingRadiationRequest(48.8575, 2.3514, 20)

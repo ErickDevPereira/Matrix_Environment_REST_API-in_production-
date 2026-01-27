@@ -16,6 +16,18 @@ class DataHandler:
         #Real data average taken from the formula avg = <weights, radiations> / sum(weights)
         real_avg: float = np.inner(weights, radiations) / np.sum(weights)
         return real_avg
+    
+    @staticmethod
+    def get_coeficient_of_var(rad_data: List[Dict[str, float]]) -> float:
+        #vector with every radiation inside the circle
+        radiations: np.ndarray = np.array([rad['radiation'] for rad in rad_data])
+        #getting average radiation
+        avg_rad: float = np.sum(radiations) / len(radiations)
+        #getting average deviation
+        avg_deviation: float = np.sqrt(np.sum((radiations - avg_rad) ** 2) / len(radiations))
+        #getting variability coeficient
+        CV: float = avg_deviation / avg_rad
+        return CV
 
     @staticmethod
     def clean_radiation_JSON(input_JSON : List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -151,6 +163,16 @@ class DataHandler:
             return {"temperature" : WC, "valid_case" : True} #JSON with data for the valid case
         
         return {"temperature" : None, "valid_case" : False} #JSON with None for the invalid case.
+    
+    @staticmethod
+    def analyze_heterogeneity(vc : float) -> str:
+
+        if vc < 0.1:
+            return "low"
+        elif vc < 0.3:
+            return "regular"
+        else:
+            return "high"
 
 if __name__ == '__main__':
     print(DataHandler.get_heat_index(30, 78))

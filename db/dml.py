@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from mysql.connector import PooledMySQLConnection, MySQLConnectionAbstract
+from mysql.connector import CMySQLConnection, MySQLConnection
 from typing import Any
 
 class DataManipulationLanguage:
@@ -7,12 +7,12 @@ class DataManipulationLanguage:
     class DataSet(ABC):
 
         @abstractmethod
-        def load(self):
+        def load(self) -> None:
             pass
     
     class Atmosphere(DataSet):
 
-        def load(self, MySQL_conn: PooledMySQLConnection | MySQLConnectionAbstract) -> None:
+        def load(self, MySQL_conn: CMySQLConnection | MySQLConnection) -> None:
             
             self.__cursor: Any = MySQL_conn.cursor()
             self.__cursor.execute("""
@@ -24,7 +24,7 @@ class DataManipulationLanguage:
 
     class State(DataSet):
 
-        def load(self, MySQL_conn: PooledMySQLConnection | MySQLConnectionAbstract) -> None:
+        def load(self, MySQL_conn: CMySQLConnection | MySQLConnection) -> None:
 
             self.__cursor: Any = MySQL_conn.cursor()
             self.__cursor.execute("""

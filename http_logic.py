@@ -1,12 +1,12 @@
 from flask import request
 from flask_restful import reqparse, Resource, abort, Api
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, Any, List, Callable
 from abc import ABC, abstractmethod
 from external_requests import CurrentWeatherRequest, IonizingRadiationRequest, ForecastWeatherRequest
 from data_handling import DataHandler
 import requests
 import math
-from db import DataManipulationLanguage, DataDefinitionLanguage, IoMySQL, DataQueryLanguage
+from db import DataManipulationLanguage, IoMySQL, DataQueryLanguage
 from os import urandom
 from mysql.connector import errors, CMySQLConnection, MySQLConnection
 
@@ -144,28 +144,28 @@ class HTTP:
 
             self.__forecast_weather: ForecastWeatherRequest = ForecastWeatherRequest(latitude=self.latitude, longitude=self.longitude)
             try:
-                self.__full_JSON = self.__forecast_weather.get_response()
+                self.__full_JSON: Dict[str, Any] | None = self.__forecast_weather.get_response()
             except requests.HTTPError as err:
                 abort(500, message = str(err))
             else:
                 #Here is the situation when everything went fine with the request to the API.
-                self.__filtered_data = self.__full_JSON['forecast']['forecastday']
-                self.__db = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
-                self.__dml = DataManipulationLanguage() #Creates a dml object
-                self.__token = self.__dml.RequestForecastToken()
-                self.__atm = self.__dml.Atmosphere() #Creates an atmosphere object
-                self.__states = self.__dml.State()
-                self.__id = 0
+                self.__filtered_data: List[Any] = self.__full_JSON['forecast']['forecastday']
+                self.__db: CMySQLConnection | MySQLConnection = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
+                self.__dml: DataManipulationLanguage = DataManipulationLanguage() #Creates a dml object
+                self.__token: DataManipulationLanguage.RequestForecastToken = self.__dml.RequestForecastToken()
+                self.__atm: DataManipulationLanguage.Atmosphere = self.__dml.Atmosphere() #Creates an atmosphere object
+                self.__states: DataManipulationLanguage.State = self.__dml.State()
+                self.__id: int = 0
                 while True:
                     try:
-                        self.__hex_token = urandom(8).hex()
+                        self.__hex_token: str = urandom(8).hex()
                         self.__token.load(self.__db, token = self.__hex_token)
                     except errors.IntegrityError:
                         pass
                     else:
                         break
                 for day in self.__filtered_data:
-                    self.__hours = day['hour']
+                    self.__hours: List[Any] = day['hour']
                     for hour in self.__hours:
                         self.__atm.load(self.__db,
                                         rec_id = str(self.__id) + self.__hex_token,
@@ -184,15 +184,15 @@ class HTTP:
                                         time = str(hour['time'])
                                         )
                         self.__id += 1
-                self.__dql = DataQueryLanguage()
-                self.__forecast = self.__dql.Forecast()
+                self.__dql: DataQueryLanguage = DataQueryLanguage()
+                self.__forecast: DataQueryLanguage.ForeCast = self.__dql.Forecast()
                 self.__SUB_JSON1: Dict[str, Dict[str, float]] = self.__forecast.get_avgs(self.__db, token = self.__hex_token)
                 self.__SUB_JSON2: Dict[str, Dict[str, Dict[str, float | int]]] = self.__forecast.get_extremes(self.__db, token = self.__hex_token)
                 self.__states.rm(self.__db, token = self.__hex_token) #Deleting data from states table.
                 self.__atm.rm(self.__db, token = self.__hex_token) #Deleting data from atmosphere table.
                 self.__token.rm(self.__db, token = self.__hex_token)
                 self.__db.close() #Closing the connection to the database.
-                self.__JSON = {"averages" : self.__SUB_JSON1, "extremes": self.__SUB_JSON2}
+                self.__JSON: Dict[str, Any] = {"averages" : self.__SUB_JSON1, "extremes": self.__SUB_JSON2}
                 return self.__JSON, 200
 
     class Opinions(ForceGET, Util, Resource):
@@ -200,13 +200,13 @@ class HTTP:
         def __init__(self):
             super().__init__() #Calls the constructor of Resource if it exists, doing whatever it needs to do on my class in order to keep the API working.
             self.__opinions_args: reqparse.RequestParser = reqparse.RequestParser()
-            self.__msg = lambda field : f'Something went wrong with the field {field}'
+            self.__msg: Callable[[str], str] = lambda field : f'Something went wrong with the field {field}'
             self.__opinions_args.add_argument("name", type = str, help = self.__msg('name'))
             self.__opinions_args.add_argument("text", type = str, help = self.__msg('text'))
             self.__opinions_args.add_argument("token", type = str, help = self.__msg('token'))
-            self.__dml = DataManipulationLanguage() #Will be used later on POST and DELETE
+            self.__dml: DataManipulationLanguage = DataManipulationLanguage() #Will be used later on POST and DELETE
 
-        def get(self):
+        def get(self) -> Tuple[Dict[str, str | int | List[str]], int]:
             
             self.latitude: float = request.args.get("latitude", type = float)
             self.longitude: float = request.args.get("longitude", type = float)
@@ -215,16 +215,16 @@ class HTTP:
 
             self.__latitude_str: str = f'{self.latitude:.3f}'
             self.__longitude_srt: str = f'{self.longitude:.3f}'
-            self.__db = IoMySQL.get_MySQL_conn()
-            self.__dql = DataQueryLanguage()
-            self.__commments = self.__dql.Opinion().get_opinions(self.__db, self.__latitude_str, self.__longitude_srt)
+            self.__db: CMySQLConnection | MySQLConnection = IoMySQL.get_MySQL_conn()
+            self.__dql: DataQueryLanguage = DataQueryLanguage()
+            self.__commments: List[str] = self.__dql.Opinion().get_opinions(self.__db, self.__latitude_str, self.__longitude_srt)
             self.__db.close()
             if len(self.__commments) == 0:
                 return {"message": f"No comments registered for {self.__latitude_str}, {self.__longitude_srt}"}, 200
             else:
                 return {"number_of_comments" : len(self.__commments), "comments" : self.__commments}, 200
 
-        def post(self):
+        def post(self) -> Tuple[Dict[str, str], int]:
 
             self.latitude: float = request.args.get("latitude", type = float)
             self.longitude: float = request.args.get("longitude", type = float)
@@ -234,12 +234,12 @@ class HTTP:
             if self.__opinion_JSON['text'] is None or self.__opinion_JSON['name'] is None:
                 abort(400, message = 'You must give a JSON with fields "text" and "name"')
             
-            self.__db = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
-            self.__opinionPOST = self.__dml.Opinion()
-            self.__tokenPOST = self.__dml.RequestForecastToken()
+            self.__db: CMySQLConnection | MySQLConnection = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
+            self.__opinionPOST: DataManipulationLanguage.Opinion = self.__dml.Opinion()
+            self.__tokenPOST: DataManipulationLanguage.RequestForecastToken = self.__dml.RequestForecastToken()
             while True:
                     try:
-                        self.__token_POST_hex = urandom(8).hex()
+                        self.__token_POST_hex: str = urandom(8).hex()
                         self.__tokenPOST.load(self.__db, token = self.__token_POST_hex)
                     except errors.IntegrityError:
                         pass
@@ -254,7 +254,7 @@ class HTTP:
             self.__db.close()
             return {"token" : self.__token_POST_hex, "message": "Save this token with you. You will need it if you wish to delete or edit your comment"}, 201
 
-        def patch(self):
+        def patch(self) -> Tuple[Dict[str, str], int]:
 
             self.__opinion_JSON: Any = self.__opinions_args.parse_args()
             self.__edit_token: None | str = self.__opinion_JSON['token']
@@ -277,7 +277,7 @@ class HTTP:
             else:
                 return {"message" : "text was changed with success"}, 200
 
-        def delete(self):
+        def delete(self) -> Tuple[Dict[str, str], int]:
 
             self.__opinion_JSON: Any = self.__opinions_args.parse_args()
             self.__del_token: None | str = self.__opinion_JSON['token']
@@ -306,4 +306,3 @@ class HTTP:
         api.add_resource(kwargs['EnvironmentDataNow'], "/actual_environment")
         api.add_resource(kwargs['ForecastEnvironmentData'], "/forecast_environment")
         api.add_resource(kwargs['Opinions'], "/my_opinion")
-        

@@ -21,7 +21,7 @@ class IoMySQL:
     @staticmethod
     def get_MySQL_conn() -> CMySQLConnection | MySQLConnection:
         username, password = IoMySQL.get_mysql_credentials()
-        db = connect(
+        db: CMySQLConnection | MySQLConnection = connect(
             host = 'localhost',
             username = username,
             password = password,

@@ -53,7 +53,7 @@ if __name__ == "__main__":
             try:
                 MySQL_username: str = input("Username to MySQL (you can try 'root' if you don't know it):  ") #MySQL username
                 MySQL_password: str = input("Password to MySQL:  ") #MySQL password
-                ddl = DataDefinitionLanguage(MySQL_username, MySQL_password) #Automate the creation of the database and its tables if they don't exist.
+                ddl: DataDefinitionLanguage = DataDefinitionLanguage(MySQL_username, MySQL_password) #Automate the creation of the database and its tables if they don't exist.
             except MySQL.errors.ProgrammingError:
                 print("The username or password is wrong! Try again")
             else:

@@ -1,5 +1,5 @@
-from typing import Dict, Tuple, List, Any
-from mysql.connector import CMySQLConnection, MySQLConnection
+from typing import Dict, Tuple, List
+from mysql.connector import CMySQLConnection, MySQLConnection, MySQLCursor
 
 class DataQueryLanguage:
 
@@ -7,7 +7,7 @@ class DataQueryLanguage:
 
         @staticmethod
         def get_avgs(db: CMySQLConnection | MySQLConnection, token: str) -> Dict[str, Dict[str, float]]:
-            cursor: Any = db.cursor()
+            cursor: MySQLCursor = db.cursor()
             SQL: str = """
                         SELECT
                             sq1.day,
@@ -77,7 +77,7 @@ class DataQueryLanguage:
 
         @staticmethod
         def get_extremes(db: CMySQLConnection | MySQLConnection, token: str) -> Dict[str, Dict[str, Dict[str, float | int]]]:
-            cursor: Any = db.cursor()
+            cursor: MySQLCursor = db.cursor()
             SQL: str = """
                         SELECT
                             DATE(s.time) AS day,
@@ -131,7 +131,7 @@ class DataQueryLanguage:
         @staticmethod
         def get_opinions(db: CMySQLConnection | MySQLConnection, latitude: str, longitude: str) -> List[str]:
 
-            cursor: Any = db.cursor()
+            cursor: MySQLCursor = db.cursor()
             cursor.execute(
                         """
                         SELECT
@@ -144,14 +144,14 @@ class DataQueryLanguage:
                         )
             texts: List[Tuple[str]] = cursor.fetchall()
             cursor.close()
-            JSON = [{"text": text[0], "date": str(text[1])} for text in texts]
+            JSON: List[Dict[str, str]] = [{"text": text[0], "date": str(text[1])} for text in texts]
             return JSON
         
         @staticmethod
         def check_token(db: CMySQLConnection | MySQLConnection, token: str) -> bool:
 
-            cursor: Any = db.cursor()
+            cursor: MySQLCursor = db.cursor()
             cursor.execute("SELECT token FROM opinions WHERE token = %s", (token,))
-            data = cursor.fetchall()
+            data: List[Tuple[str]] = cursor.fetchall()
             
             return bool(data)

@@ -8,7 +8,7 @@ import requests
 import math
 from db import DataManipulationLanguage, DataDefinitionLanguage, IoMySQL, DataQueryLanguage
 from os import urandom
-from mysql.connector import errors
+from mysql.connector import errors, CMySQLConnection, MySQLConnection
 
 class HTTP:
 
@@ -142,9 +142,9 @@ class HTTP:
 
             self.auth(False)
 
-            self.__forecast_wather: ForecastWeatherRequest = ForecastWeatherRequest(latitude=self.latitude, longitude=self.longitude)
+            self.__forecast_weather: ForecastWeatherRequest = ForecastWeatherRequest(latitude=self.latitude, longitude=self.longitude)
             try:
-                self.__full_JSON = self.__forecast_wather.get_response()
+                self.__full_JSON = self.__forecast_weather.get_response()
             except requests.HTTPError as err:
                 abort(500, message = str(err))
             else:
@@ -195,6 +195,115 @@ class HTTP:
                 self.__JSON = {"averages" : self.__SUB_JSON1, "extremes": self.__SUB_JSON2}
                 return self.__JSON, 200
 
+    class Opinions(ForceGET, Util, Resource):
+
+        def __init__(self):
+            super().__init__() #Calls the constructor of Resource if it exists, doing whatever it needs to do on my class in order to keep the API working.
+            self.__opinions_args: reqparse.RequestParser = reqparse.RequestParser()
+            self.__msg = lambda field : f'Something went wrong with the field {field}'
+            self.__opinions_args.add_argument("name", type = str, help = self.__msg('name'))
+            self.__opinions_args.add_argument("text", type = str, help = self.__msg('text'))
+            self.__opinions_args.add_argument("token", type = str, help = self.__msg('token'))
+            self.__dml = DataManipulationLanguage() #Will be used later on POST and DELETE
+
+        def get(self):
+            
+            self.latitude: float = request.args.get("latitude", type = float)
+            self.longitude: float = request.args.get("longitude", type = float)
+
+            self.auth(False)
+
+            self.__latitude_str: str = f'{self.latitude:.3f}'
+            self.__longitude_srt: str = f'{self.longitude:.3f}'
+            self.__db = IoMySQL.get_MySQL_conn()
+            self.__dql = DataQueryLanguage()
+            self.__commments = self.__dql.Opinion().get_opinions(self.__db, self.__latitude_str, self.__longitude_srt)
+            self.__db.close()
+            if len(self.__commments) == 0:
+                return {"message": f"No comments registered for {self.__latitude_str}, {self.__longitude_srt}"}, 200
+            else:
+                return {"number_of_comments" : len(self.__commments), "comments" : self.__commments}, 200
+
+        def post(self):
+
+            self.latitude: float = request.args.get("latitude", type = float)
+            self.longitude: float = request.args.get("longitude", type = float)
+            self.auth(False)
+            self.__opinion_JSON: Any = self.__opinions_args.parse_args()
+            
+            if self.__opinion_JSON['text'] is None or self.__opinion_JSON['name'] is None:
+                abort(400, message = 'You must give a JSON with fields "text" and "name"')
+            
+            self.__db = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
+            self.__opinionPOST = self.__dml.Opinion()
+            self.__tokenPOST = self.__dml.RequestForecastToken()
+            while True:
+                    try:
+                        self.__token_POST_hex = urandom(8).hex()
+                        self.__tokenPOST.load(self.__db, token = self.__token_POST_hex)
+                    except errors.IntegrityError:
+                        pass
+                    else:
+                        break
+            self.__opinionPOST.load(self.__db,
+                                    name = self.__opinion_JSON['name'],
+                                    text = self.__opinion_JSON['text'],
+                                    token = self.__token_POST_hex,
+                                    latitude = f'{self.latitude:.3f}',
+                                    longitude = f'{self.longitude:.3f}')
+            self.__db.close()
+            return {"token" : self.__token_POST_hex, "message": "Save this token with you. You will need it if you wish to delete or edit your comment"}, 201
+
+        def patch(self):
+
+            self.__opinion_JSON: Any = self.__opinions_args.parse_args()
+            self.__edit_token: None | str = self.__opinion_JSON['token']
+            self.__edit_text: None | str = self.__opinion_JSON['text']
+
+            if self.__edit_token is None or self.__edit_text is None:
+                abort(400, message = "You must provide a value for text and token parameters if you want to edit a comment!")
+            
+            self.__db: CMySQLConnection | MySQLConnection = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
+            self.__dql: DataQueryLanguage = DataQueryLanguage()
+            self.__exists: bool = self.__dql.Opinion().check_token(self.__db, self.__edit_token)
+
+            if not self.__exists:
+                abort(404, message = "The given token is not linked to any of the opinions on the database!")
+
+            try:
+                self.__dml.Opinion().edit(self.__db, new_text = self.__edit_text, token = self.__edit_token)
+            except Exception as err:
+                abort(500, message = f"Something went wrong on the database or application. Error: {err}")
+            else:
+                return {"message" : "text was changed with success"}, 200
+
+        def delete(self):
+
+            self.__opinion_JSON: Any = self.__opinions_args.parse_args()
+            self.__del_token: None | str = self.__opinion_JSON['token']
+
+            if self.__del_token is None:
+                abort(400, message = "You must deliver a token")
+            
+            self.__db: CMySQLConnection | MySQLConnection = IoMySQL.get_MySQL_conn() #Gets connection with MySQL.
+            self.__dql: DataQueryLanguage = DataQueryLanguage()
+            self.__exists: bool = self.__dql.Opinion().check_token(self.__db, self.__del_token)
+            
+            if self.__exists:
+                try:
+                    self.__dml.Opinion().rm(self.__db, self.__del_token) #Deleting the opinion of the user.
+                    self.__dml.RequestForecastToken().rm(self.__db, self.__del_token) #Deleting the token from table of tokens
+                except Exception:
+                    self.__db.close()
+                    abort(500, message = "Something went wrong on the database of the server! Try later")
+                else:
+                    self.__db.close()
+                    return {"message": "The comment was deleted successfully!"}, 200
+            self.__db.close()
+            abort(400, message = "There is no comment with such token")
+
     def __init__(self, api: Api, **kwargs):
         api.add_resource(kwargs['EnvironmentDataNow'], "/actual_environment")
         api.add_resource(kwargs['ForecastEnvironmentData'], "/forecast_environment")
+        api.add_resource(kwargs['Opinions'], "/my_opinion")
+        

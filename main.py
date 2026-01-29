@@ -66,6 +66,7 @@ if __name__ == "__main__":
         from http_logic import HTTP
         ENVIRONMENT_DATA_NOW: HTTP.EnvironmentDataNow = HTTP.EnvironmentDataNow #importing the class that has the HTTP methods for the /actual_environment route.
         FORECAST_ENVIRONMENT_DATA: HTTP.ForecastEnvironmentData = HTTP.ForecastEnvironmentData
-        http_initializer: HTTP = HTTP(server.api, EnvironmentDataNow = ENVIRONMENT_DATA_NOW, ForecastEnvironmentData = FORECAST_ENVIRONMENT_DATA)
+        OPINION: HTTP.Opinions = HTTP.Opinions
+        http_initializer: HTTP = HTTP(server.api, EnvironmentDataNow = ENVIRONMENT_DATA_NOW, ForecastEnvironmentData = FORECAST_ENVIRONMENT_DATA, Opinions = OPINION)
         server.app.run(debug = True, use_reloader = False)
         IoMySQL.remove_credentials()

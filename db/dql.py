@@ -125,3 +125,33 @@ class DataQueryLanguage:
                     }
                 })
             return treated_data
+
+    class Opinion:
+
+        @staticmethod
+        def get_opinions(db: CMySQLConnection | MySQLConnection, latitude: str, longitude: str) -> List[str]:
+
+            cursor: Any = db.cursor()
+            cursor.execute(
+                        """
+                        SELECT
+                            text, post_date
+                        FROM
+                            opinions
+                        WHERE
+                            latitude = %s AND longitude = %s
+                        """, (latitude, longitude)
+                        )
+            texts: List[Tuple[str]] = cursor.fetchall()
+            cursor.close()
+            JSON = [{"text": text[0], "date": str(text[1])} for text in texts]
+            return JSON
+        
+        @staticmethod
+        def check_token(db: CMySQLConnection | MySQLConnection, token: str) -> bool:
+
+            cursor: Any = db.cursor()
+            cursor.execute("SELECT token FROM opinions WHERE token = %s", (token,))
+            data = cursor.fetchall()
+            
+            return bool(data)

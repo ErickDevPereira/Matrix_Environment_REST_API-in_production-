@@ -76,8 +76,34 @@ class DataManipulationLanguage:
             MySQL_conn.commit()
             self.__cursor.close()
         
-        def rm(self, MySQL_conn: CMySQLConnection | MySQLConnection, token: str):
+        def rm(self, MySQL_conn: CMySQLConnection | MySQLConnection, token: str) -> None:
             self.__cursor: Any = MySQL_conn.cursor()
             self.__cursor.execute("DELETE FROM states WHERE RIGHT(rec_id, 16) = %s", (token,))
+            MySQL_conn.commit()
+            self.__cursor.close()
+    
+    class Opinion(DataSet):
+
+        def load(self,
+                MySQL_conn: CMySQLConnection | MySQLConnection,
+                name: str,
+                text: str,
+                token: str,
+                latitude: str,
+                longitude: str) -> None:
+            self.__cursor: Any = MySQL_conn.cursor()
+            self.__cursor.execute("INSERT INTO opinions (name, text, token, latitude, longitude) VALUES (%s, %s, %s, %s, %s)", (name, text, token, latitude, longitude))
+            MySQL_conn.commit()
+            self.__cursor.close()
+
+        def rm(self, MySQL_conn: CMySQLConnection | MySQLConnection, token: str) -> None:
+            self.__cursor: Any = MySQL_conn.cursor()
+            self.__cursor.execute("DELETE FROM opinions WHERE token = %s", (token,))
+            MySQL_conn.commit()
+            self.__cursor.close()
+        
+        def edit(self, MySQL_conn: CMySQLConnection | MySQLConnection, token: str, new_text: str) -> None:
+            self.__cursor: Any = MySQL_conn.cursor()
+            self.__cursor.execute("UPDATE opinions SET text = %s WHERE token = %s", (new_text, token))
             MySQL_conn.commit()
             self.__cursor.close()

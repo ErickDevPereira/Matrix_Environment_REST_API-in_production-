@@ -22,10 +22,23 @@ class DataDefinitionLanguage:
         self.__cursor =  self.__db.cursor()
         self.__cursor.execute("""
                     CREATE TABLE IF NOT EXISTS request_forecast_token (
-                        token_id INT PRIMARY KEY AUTO_INCREMENT,
-                        req_token VARCHAR(16)
+                        req_token VARCHAR(16) PRIMARY KEY
                     )
                     """)
+        self.__cursor.close()
+        self.__cursor = self.__db.cursor()
+        self.__cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS opinions (
+                        opnion_id INT PRIMARY KEY AUTO_INCREMENT,
+                        name VARCHAR(100),
+                        text VARCHAR(1024) NOT NULL,
+                        token VARCHAR(16) NOT NULL,
+                        latitude VARCHAR(6) NOT NULL,
+                        longitude VARCHAR(7) NOT NULL,
+                        post_date DATETIME DEFAULT NOW(),
+                        FOREIGN KEY (token) REFERENCES request_forecast_token (req_token)
+                    )
+                            """)
         self.__cursor.close()
         self.__cursor: Any = self.__db.cursor()
         self.__cursor.execute("""
